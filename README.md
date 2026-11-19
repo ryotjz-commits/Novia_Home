@@ -4,10 +4,10 @@ A lightweight Android launcher for the existing NOVIA HOME V4.4 ESP32 web dashbo
 
 ## Current behavior
 - Opens `http://192.168.4.1/` by default (connect the phone to the NOVIA-HOME AP first).
-- Can save a private LAN IPv4 address for the ESP32 STA interface when the phone is connected to the same home router.
+- Can save a full local or online dashboard URL (HTTP or HTTPS), including the ESP32 AP address, ESP32 STA address, or a hosted dashboard domain.
 - Keeps the chosen address between launches.
 - Enables JavaScript and DOM storage required by the current dashboard.
-- Restricts top-level WebView navigation to the configured ESP32 IP.
+- Restricts top-level WebView navigation to the configured URL origin (scheme, host, and port).
 - Binds app traffic to the available Wi-Fi network when Android exposes one, useful when the NOVIA AP has no internet access.
 - No relay/timer/schedule logic is duplicated in Android; the ESP32 remains authoritative.
 
@@ -21,8 +21,8 @@ A lightweight Android launcher for the existing NOVIA HOME V4.4 ESP32 web dashbo
 This environment did not have Android SDK / Gradle installed, so an APK binary could not be compiled here. The project source is ready for an Android Studio build.
 
 ## Important connection notes
-- AP mode: connect Android to SSID `NOVIA-HOME` (or the SSID configured in the ESP32) and open the app. Default address is `192.168.4.1`.
-- Router/STA mode: keep the phone on the same router as the ESP32, tap **IP ESP32**, and enter the ESP32 STA IP shown by the firmware Serial Monitor.
+- AP mode: connect Android to SSID `NOVIA-HOME` (or the SSID configured in the ESP32) and open the app. Default URL is `http://192.168.4.1/`.
+- Router/STA mode: keep the phone on the same router as the ESP32, tap **URL**, and enter `http://` plus the ESP32 STA IP shown by the firmware Serial Monitor. For an online dashboard, enter its full `https://` URL.
 - AP + STA means both ESP32 interfaces can remain active; it does not mean a phone can use both Wi-Fi networks simultaneously.
 - Android may warn that the NOVIA-HOME Wi-Fi has no internet. Choose to stay connected to that network.
 
@@ -38,3 +38,4 @@ This project includes a GitHub Actions workflow so GitHub's cloud runner can com
 7. Extract the downloaded artifact ZIP. Install `app-debug.apk`. Android may ask permission to install apps from Chrome or your file manager; allow it only for the app you used to download the APK.
 
 The build runs on GitHub's hosted computer; Android 13 on the phone is only used to upload the source and download/install the APK. Keep the repository private because it contains your project source.
+\n\n## URL update (1.1)\n- Address dialog accepts full `http://` and `https://` dashboard URLs. Bare IPv4 addresses default to HTTP; domain names default to HTTPS.\n- Last selected dashboard URL is saved in app preferences.\n- Public dashboard URLs use Android default network routing; private/local URLs bind to Wi-Fi when available.\n- WebView top-level navigation stays on the configured origin.\n
