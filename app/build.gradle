@@ -1,16 +1,5 @@
+// Root project: declare Android Gradle Plugin version for submodules.
+// The Android application itself is located in :app.
 plugins {
-    id 'com.android.application'
-}
-
-android {
-    namespace 'id.novia.home'
-    compileSdk 35
-
-    defaultConfig {
-        applicationId 'id.novia.home'
-        minSdk 23
-        targetSdk 28
-        versionCode 1
-        versionName '1.0.0'
-    }
+    id 'com.android.application' version '8.7.3' apply false
 }
