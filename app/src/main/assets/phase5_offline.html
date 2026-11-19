@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#11191a"><title>NOVIA HOME</title>
+<style>
+:root{color-scheme:dark;--bg:#11191a;--card:#202a2c;--line:#344345;--text:#edf5ef;--muted:#9eafa7;--accent:#83c99f}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px system-ui,-apple-system,Segoe UI,sans-serif;padding:18px 16px 28px}.wrap{max-width:560px;margin:auto}.brand{font-weight:800;font-size:24px;letter-spacing:.3px}.sub{color:var(--muted);font-size:12px;margin-top:3px}.status{margin:18px 0;padding:15px;border:1px solid var(--line);border-radius:16px;background:var(--card)}.status strong{display:block;margin-bottom:5px}.pill{display:inline-block;padding:5px 9px;border-radius:20px;background:#354a3e;color:#bce8ca;font-size:11px;font-weight:700}.panel{border:1px solid var(--line);background:var(--card);padding:16px;border-radius:18px;margin:12px 0}.panel h2{font-size:16px;margin:0 0 8px}.panel p{color:var(--muted);line-height:1.5;margin:0 0 12px}.btn{width:100%;border:0;border-radius:13px;padding:14px;margin-top:9px;background:var(--accent);color:#14241a;font-weight:800;font-size:15px}.btn.secondary{background:#303d40;color:var(--text);border:1px solid var(--line)}.foot{color:var(--muted);font-size:11px;text-align:center;margin-top:20px}
+</style></head>
+<body><div class="wrap"><header><div class="brand">NOVIA HOME</div><div class="sub">Smart Home Controller · Phase 5</div></header>
+<section class="status"><span class="pill" id="mode">OFFLINE / RECOVERY</span><strong id="status">Perangkat belum tersambung</strong><div class="sub">Dashboard recovery berjalan dari aplikasi (offline).</div></section>
+<section class="panel"><h2>Hubungkan perangkat</h2><p>Scan jaringan untuk menemukan ESP32 NOVIA HOME. Jika menggunakan AP ESP32, sambungkan Wi-Fi HP ke jaringan AP perangkat lalu scan ulang.</p><button class="btn" onclick="scan()">Cari NOVIA HOME</button><button class="btn secondary" onclick="openLocal()">Buka dashboard lokal</button></section>
+<section class="panel"><h2>Dashboard online</h2><p>Gunakan dashboard online jika perangkat lokal belum tersedia dan internet aktif.</p><button class="btn secondary" onclick="openOnline()">Buka dashboard online</button></section>
+<section class="panel"><h2>Catatan</h2><p>Halaman ini adalah recovery UI yang dibundel dalam APK. Kontrol relay offline belum diaktifkan karena endpoint API kontrol firmware V5 perlu dipastikan dari source firmware yang sedang teruji.</p></section><div class="foot">NOVIA HOME · Local-first connection recovery</div></div>
+<script>
+function scan(){try{if(window.NoviaApp)NoviaApp.scan();else alert('Bridge Android belum tersedia.')}catch(e){}}
+function openLocal(){try{if(window.NoviaApp)NoviaApp.openLocal();else alert('Bridge Android belum tersedia.')}catch(e){}}
+function openOnline(){try{if(window.NoviaApp)NoviaApp.openOnline();else location.href='https://ryotjz-commits.github.io/NOVIA-HOME-V4-DASHBOARD/'}catch(e){}}
+function updateStatus(mode,msg){document.getElementById('mode').textContent=mode;document.getElementById('status').textContent=msg;}
+</script></body></html>
