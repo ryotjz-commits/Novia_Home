@@ -89,7 +89,27 @@ public class MainActivity extends Activity {
         relayControlButton = new android.widget.Button(this); relayControlButton.setText("Kontrol Relay Lokal"); relayControlButton.setEnabled(false);
         relayControlButton.setOnClickListener(v -> { if(localUrl!=null) webView.loadUrl("file:///android_asset/local_relay_control.html"); });
         quickActions.addView(mainDashboardButton,new LinearLayout.LayoutParams(0,-2,1)); quickActions.addView(relayControlButton,new LinearLayout.LayoutParams(0,-2,1));
-        content.addView(quickActions,new LinearLayout.LayoutParams(-1,-2));
+
+// --- Phase 9.2 Native HTTPS Probe (diagnostic-only) ---
+android.widget.Button apiProbeButton = new android.widget.Button(this);
+apiProbeButton.setText("TES HTTPS API");
+apiProbeButton.setOnClickListener(v -> {
+    apiProbeButton.setEnabled(false);
+    apiProbeButton.setText("MENGUJI...");
+    NativeApiProbe.run(handler, result -> {
+        apiProbeButton.setEnabled(true);
+        apiProbeButton.setText("TES HTTPS API");
+        new android.app.AlertDialog.Builder(MainActivity.this)
+            .setTitle("NOVIA HOME · Native API Test")
+            .setMessage(result)
+            .setPositiveButton("OK", null)
+            .show();
+    });
+});
+quickActions.addView(apiProbeButton, new LinearLayout.LayoutParams(0, -2, 1));
+// --- End Phase 9.2 ---
+
+content.addView(quickActions,new LinearLayout.LayoutParams(-1,-2));
         webView = new WebView(this);
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true); settings.setDomStorageEnabled(true); settings.setDatabaseEnabled(true);
