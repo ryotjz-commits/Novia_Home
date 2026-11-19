@@ -1,5 +1,4 @@
 package com.novia.home;
-
 import android.app.Activity;
 import android.os.Bundle;
 import android.os.Handler;
@@ -9,6 +8,12 @@ import android.webkit.WebViewClient;
 import android.webkit.WebSettings;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceError;
+import android.webkit.WebResourceResponse;
+import android.webkit.WebChromeClient;
+import android.webkit.ConsoleMessage;
+import android.webkit.SslErrorHandler;
+import android.net.http.SslError;
+import android.util.Log;
 import android.view.View;
 import android.view.Gravity;
 import android.widget.FrameLayout;
@@ -21,20 +26,20 @@ import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
-
 import com.novia.home.network.DeviceDiscovery;
 import com.novia.home.network.ConnectionManager;
 import com.novia.home.web.Phase5Bridge;
 import com.novia.home.web.Phase6Bridge;
 import org.json.JSONObject;
-
 public class MainActivity extends Activity {
+    private static final String TAG = "NOVIA_WEB_DIAG";
     private static final String DASHBOARD_URL = "https://ryotjz-commits.github.io/NOVIA-HOME-V4-DASHBOARD/";
     private static final String AP_FALLBACK_URL = "http://192.168.4.1/";
     private WebView webView;
     private ProgressBar progress;
     private TextView offline;
     private TextView connection;
+    private TextView diagnostics;
     private DeviceDiscovery discovery;
     private ConnectionManager connectionManager;
     private String localUrl = null;
@@ -46,7 +51,17 @@ public class MainActivity extends Activity {
     private String currentMode = "STARTING";
     private Phase6Bridge phase6Bridge;
     private android.widget.Button relayControlButton;
-
+    private final StringBuilder diagnosticLog = new StringBuilder();
+    private void addDiagnostic(String message) {
+        Log.w(TAG, message);
+        runOnUiThread(() -> {
+            if (diagnostics == null) return;
+            diagnosticLog.append(message).append('\n');
+            while (diagnosticLog.length() > 1600) diagnosticLog.delete(0, diagnosticLog.indexOf("\n") + 1);
+            diagnostics.setText(diagnosticLog.toString());
+            diagnostics.setVisibility(View.VISIBLE);
+        });
+    }
     @Override public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         getWindow().setStatusBarColor(Color.rgb(17,25,26));
@@ -62,6 +77,12 @@ public class MainActivity extends Activity {
         connection.setPadding(12,12,12,12); connection.setBackgroundColor(Color.rgb(31,47,40));
         connection.setOnClickListener(v -> startDiscovery());
         content.addView(connection, new LinearLayout.LayoutParams(-1,-2));
+        diagnostics = new TextView(this);
+        diagnostics.setTextColor(Color.rgb(255,210,150)); diagnostics.setTextSize(10);
+        diagnostics.setTypeface(Typeface.MONOSPACE); diagnostics.setPadding(8,6,8,6);
+        diagnostics.setBackgroundColor(Color.rgb(45,34,24)); diagnostics.setVisibility(View.GONE);
+        diagnostics.setText("WebView diagnostics aktif. Error API akan muncul di sini.");
+        content.addView(diagnostics,new LinearLayout.LayoutParams(-1,-2));
         LinearLayout quickActions = new LinearLayout(this); quickActions.setOrientation(LinearLayout.HORIZONTAL);
         android.widget.Button mainDashboardButton = new android.widget.Button(this); mainDashboardButton.setText("Dashboard");
         mainDashboardButton.setOnClickListener(v -> { if(localUrl!=null) webView.loadUrl(localUrl); else webView.loadUrl(DASHBOARD_URL); });
@@ -74,6 +95,13 @@ public class MainActivity extends Activity {
         settings.setJavaScriptEnabled(true); settings.setDomStorageEnabled(true); settings.setDatabaseEnabled(true);
         settings.setLoadsImagesAutomatically(true); settings.setCacheMode(WebSettings.LOAD_DEFAULT);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
+        webView.setWebChromeClient(new WebChromeClient() {
+            @Override public boolean onConsoleMessage(ConsoleMessage message) {
+                String line = "JS " + message.messageLevel() + " " + message.sourceId() + ":" + message.lineNumber() + " — " + message.message();
+                if (message.messageLevel() == ConsoleMessage.MessageLevel.ERROR || message.messageLevel() == ConsoleMessage.MessageLevel.WARNING) addDiagnostic(line);
+                return true;
+            }
+        });
         webView.addJavascriptInterface(new Phase5Bridge(new Phase5Bridge.Actions() {
             @Override public void scan() { runOnUiThread(() -> startDiscovery()); }
             @Override public void openLocal() { runOnUiThread(() -> { String target = localUrl != null ? localUrl : AP_FALLBACK_URL; webView.loadUrl(target); }); }
@@ -84,10 +112,20 @@ public class MainActivity extends Activity {
         webView.setWebViewClient(new WebViewClient() {
             @Override public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
                 progress.setVisibility(View.VISIBLE); offline.setVisibility(View.GONE);
+                addDiagnostic("PAGE start: " + url);
             }
-            @Override public void onPageFinished(WebView view, String url) { progress.setVisibility(View.GONE); }
+            @Override public void onPageFinished(WebView view, String url) { progress.setVisibility(View.GONE); addDiagnostic("PAGE finished: " + url); }
             @Override public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
-                if (request.isForMainFrame() && !request.getUrl().toString().startsWith("file:///android_asset/")) showOfflineShell();
+                String url = request == null ? "(unknown url)" : request.getUrl().toString();
+                addDiagnostic("WEB error code=" + (error == null ? "?" : error.getErrorCode()) + " desc=" + (error == null ? "?" : error.getDescription()) + " url=" + url);
+                if (request != null && request.isForMainFrame() && !request.getUrl().toString().startsWith("file:///android_asset/")) showOfflineShell();
+            }
+            @Override public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse response) {
+                if (request != null) addDiagnostic("HTTP " + response.getStatusCode() + " " + response.getReasonPhrase() + " url=" + request.getUrl());
+            }
+            @Override public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
+                addDiagnostic("SSL error: " + error);
+                handler.cancel(); // fail closed; never bypass certificate errors
             }
         });
         content.addView(webView, new LinearLayout.LayoutParams(-1,0,1));
@@ -112,7 +150,6 @@ public class MainActivity extends Activity {
             @Override public void onOffline() { runOnUiThread(() -> { discoveryRunning = false; if(relayControlButton!=null)relayControlButton.setEnabled(false); showOfflineShell(); }); }
         }); setupNetworkMonitor(); startDiscovery();
     }
-
     private void setupNetworkMonitor() {
         connectivity = (ConnectivityManager)getSystemService(CONNECTIVITY_SERVICE);
         if (connectivity == null) return;
@@ -127,7 +164,6 @@ public class MainActivity extends Activity {
     }
     private void scheduleDiscovery(String msg) { handler.removeCallbacks(retryRunnable); handler.postDelayed(retryRunnable, 1200); }
     private final Runnable retryRunnable = () -> startDiscovery();
-
     private void startDiscovery() {
         if (destroyed || discoveryRunning) return;
         discoveryRunning = true;
