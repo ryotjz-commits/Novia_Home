@@ -40,12 +40,9 @@ jobs:
           set -euo pipefail
           SDKMANAGER="$(find "$ANDROID_SDK_ROOT/cmdline-tools" -type f -name sdkmanager -print -quit)"
           if [[ -z "$SDKMANAGER" || ! -x "$SDKMANAGER" ]]; then
-            echo "sdkmanager not found in Android SDK cmdline-tools" >&2
-            find "$ANDROID_SDK_ROOT/cmdline-tools" -maxdepth 4 -type f -name sdkmanager -print || true
+            echo "sdkmanager not found" >&2
             exit 1
           fi
-          echo "Using sdkmanager: $SDKMANAGER"
-          "$SDKMANAGER" --version
           yes | "$SDKMANAGER" --licenses >/dev/null || true
           "$SDKMANAGER" --install "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
@@ -54,7 +51,6 @@ jobs:
           set -euo pipefail
           test -d "$ANDROID_SDK_ROOT/platforms/android-35"
           test -d "$ANDROID_SDK_ROOT/build-tools/35.0.0"
-          echo "Android SDK 35 and Build Tools 35.0.0 installed."
 
       - name: Locate Android project root
         id: locate
@@ -66,14 +62,62 @@ jobs:
           elif [[ -f "novia_apk_phase1/build.gradle" && -d "novia_apk_phase1/app" ]]; then
             PROJECT_DIR="novia_apk_phase1"
           else
-            echo "Could not find Android Gradle project root." >&2
-            echo "Expected build.gradle + app/ at repository root or under novia_apk_phase1/." >&2
-            echo "Repository contents:" >&2
-            find . -maxdepth 3 -type f \( -name build.gradle -o -name settings.gradle -o -name AndroidManifest.xml \) -print >&2
+            echo "Android project root not found" >&2
+            find . -maxdepth 4 -type f \( -name build.gradle -o -name settings.gradle -o -name AndroidManifest.xml \) -print >&2
             exit 1
           fi
           echo "project_dir=$PROJECT_DIR" >> "$GITHUB_OUTPUT"
-          echo "Detected Android project root: $PROJECT_DIR"
+          echo "Project root: $PROJECT_DIR"
+
+      # Phase 8.4: force known-good plugin repositories/version in CI.
+      # This prevents stale/missing root Gradle plugin declarations from blocking AGP resolution.
+      - name: Normalize Gradle root configuration for CI
+        shell: bash
+        env:
+          PROJECT_DIR: ${{ steps.locate.outputs.project_dir }}
+        run: |
+          set -euo pipefail
+          cd "$PROJECT_DIR"
+          echo "Before patch: root build.gradle"
+          sed -n '1,100p' build.gradle || true
+          echo "Before patch: settings.gradle"
+          sed -n '1,100p' settings.gradle || true
+          cat > settings.gradle <<'EOF'
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          rootProject.name = 'NOVIA_HOME'
+          include ':app'
+          EOF
+          cat > build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application' version '8.7.3' apply false
+          }
+          EOF
+          echo "Normalized root Gradle files:"
+          cat settings.gradle
+          cat build.gradle
+
+      - name: Print app Gradle configuration
+        shell: bash
+        env:
+          PROJECT_DIR: ${{ steps.locate.outputs.project_dir }}
+        run: |
+          set -euo pipefail
+          cd "$PROJECT_DIR"
+          echo "--- app/build.gradle ---"
+          sed -n '1,200p' app/build.gradle
 
       - name: Build Debug APK
         shell: bash
