@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NOVIA HOME · Phase 6</title>
+<style>
+:root{color-scheme:dark;--bg:#11191a;--card:#202b2d;--line:#334245;--text:#edf4ef;--muted:#9bb0a5;--green:#86c79d;--amber:#e8bd75}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px system-ui,sans-serif;padding:18px}
+header{margin:8px 0 18px}h1{font-size:22px;margin:0 0 4px}p{color:var(--muted);margin:5px 0}
+.status{border:1px solid #66532e;background:#322a1d;color:var(--amber);padding:12px;border-radius:12px;line-height:1.4;margin:12px 0 18px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.relay{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;min-height:126px}
+.relay h2{font-size:16px;margin:0 0 8px}.state{font-size:13px;color:var(--muted);margin-bottom:12px}
+button{width:100%;border:1px solid #435456;border-radius:10px;padding:11px;background:#263538;color:#a7b9b3;font-weight:700}
+button:disabled{opacity:.65}.foot{margin-top:16px;border:1px solid var(--line);border-radius:12px;padding:12px;font-size:13px;color:var(--muted)}
+</style></head><body>
+<header><h1>NOVIA HOME</h1><p>Local Relay Control · Phase 6</p></header>
+<div class="status" id="status">API kontrol relay belum diverifikasi dari firmware V5. Tombol kontrol ditahan demi keamanan.</div>
+<div class="grid" id="relays"></div>
+<div class="foot">Tampilan ini belum mengirim perintah ON/OFF. Upload firmware V5 yang sudah teruji untuk mengidentifikasi endpoint, format request, dan status relay asli sebelum kontrol diaktifkan.</div>
+<script>
+const root=document.getElementById('relays');
+for(let n=1;n<=4;n++){let el=document.createElement('section');el.className='relay';el.innerHTML=`<h2>Relay ${n}</h2><div class="state">Status: belum terbaca</div><button disabled>API belum diverifikasi</button>`;root.appendChild(el);}
+if(window.NoviaRelay){try{const d=JSON.parse(NoviaRelay.getRelayStatus());document.getElementById('status').textContent=d.reason||'API belum diverifikasi';}catch(e){}}
+</script></body></html>
