@@ -1,0 +1,62 @@
+NOVIA HOME V5 — DISCOVERY ADD-ON REFERENCE (NOT A REPLACEMENT FIRMWARE)
+
+This is a small additive example. Merge only after checking the current firmware's
+server and loop structure. Do not duplicate WebServer server(80) declarations or
+server.begin() calls if they already exist.
+
+1) Add include and global:
+
+#include <WiFiUdp.h>
+WiFiUDP noviaDiscoveryUdp;
+static const uint16_t NOVIA_DISCOVERY_PORT = 4210;
+
+2) Add this endpoint in setup(), before the existing server.begin():
+
+server.on("/api/device", HTTP_GET, []() {
+  String mode = (WiFi.getMode() & WIFI_AP) ? "AP" : "STA";
+  String json = "{\"device\":\"NOVIA_HOME\",\"device_id\":\"NOVIA-ESP32-01\","
+                "\"name\":\"NOVIA HOME\",\"version\":\"V5\",\"mode\":\"" + mode + "\","
+                "\"ip\":\"" + WiFi.localIP().toString() + "\",\"port\":80}";
+  server.send(200, "application/json", json);
+});
+
+3) In setup(), after WiFi/AP setup (and before/after server.begin() is okay):
+
+noviaDiscoveryUdp.begin(NOVIA_DISCOVERY_PORT);
+
+4) Add this helper function outside setup()/loop():
+
+void noviaHandleDiscovery() {
+  int packetSize = noviaDiscoveryUdp.parsePacket();
+  if (!packetSize) return;
+  char packet[64];
+  int len = noviaDiscoveryUdp.read(packet, sizeof(packet) - 1);
+  if (len <= 0) return;
+  packet[len] = '\0';
+  if (String(packet) != "NOVIA_DISCOVER_V1") return;
+
+  IPAddress senderIp = noviaDiscoveryUdp.remoteIP();
+  uint16_t senderPort = noviaDiscoveryUdp.remotePort();
+  String mode = (WiFi.getMode() & WIFI_AP) ? "AP" : "STA";
+  String response = "{\"device\":\"NOVIA_HOME\",\"device_id\":\"NOVIA-ESP32-01\","
+                   "\"name\":\"NOVIA HOME\",\"version\":\"V5\",\"mode\":\"" + mode + "\","
+                   "\"ip\":\"" + WiFi.localIP().toString() + "\",\"port\":80}";
+  noviaDiscoveryUdp.beginPacket(senderIp, senderPort);
+  noviaDiscoveryUdp.write((const uint8_t*)response.c_str(), response.length());
+  noviaDiscoveryUdp.endPacket();
+}
+
+5) Call this from the existing loop() (do not replace existing loop work):
+
+noviaHandleDiscovery();
+
+IMPORTANT:
+- Keep existing relay, Blynk, button, automation, API and dashboard code.
+- Check whether WebServer is already declared and running; reuse it.
+- The endpoint /api/device must be unique. If already used, choose a compatible route
+  and update APK DeviceDiscovery.java accordingly.
+- Test the identity endpoint in a browser first, e.g. http://ESP32_IP/api/device.
+- This example reports WiFi.localIP(); verify AP/STA mode behavior for your firmware.
+
+
+Phase 2.1 APK update: after UDP discovery it may fall back to a limited parallel HTTP subnet scan (port 80). Endpoint GET /api/device remains required. Firmware not patched; obtain the actual stable V5 INO before applying these additions.

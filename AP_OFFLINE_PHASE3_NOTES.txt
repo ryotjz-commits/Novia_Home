@@ -1,0 +1,9 @@
+NOVIA HOME APK — Phase 3 integration notes
+
+AP direct address is assumed 192.168.4.1 (ESP32 SoftAP default). The APK does not silently switch Wi-Fi; Android versions may require user consent/settings. After phone connects to the ESP32 AP, app probes GET http://192.168.4.1/api/device and opens local root when the probe returns HTTP 200.
+
+To make direct AP fallback reliable, firmware should implement the same identity endpoint on AP+STA interface and keep the dashboard served at `/`. Identity JSON should include: device=NOVIA_HOME, device_id (stable), name, version, mode, ip, port.
+
+Offline mode currently only displays a retry/status shell. It does not issue relay commands. Full offline controls need bundled dashboard HTML assets or firmware dashboard server and local command endpoints.
+
+Do not change relay logic or V5 baseline until the user provides the currently tested firmware file for a safe integration.
